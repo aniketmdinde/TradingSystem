@@ -22,14 +22,27 @@ endif()
 set(Boost_INCLUDE_DIR "C:/vcpkg/installed/x64-windows/include")
 include(C:/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
-find_package(Boost REQUIRED COMPONENTS asio system thread)
+find_package(Boost REQUIRED COMPONENTS asio system thread beast)
 find_package(fmt REQUIRED)
 
 # Directly add websocketpp include path from vcpkg
 include_directories(C:/vcpkg/installed/x64-windows/include)
 
+set(SOURCES
+    src/main.cpp
+    src/order_management.cpp
+    src/websocket_server.cpp
+    src/utils.cpp
+)
+
+set(HEADERS
+    src/order_management.h
+    src/websocket_server.h
+    src/utils.h
+)
+
 # Add executable
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 # Link Boost libraries (websocketpp is header-only, so no need to link it)
-target_link_libraries(${PROJECT_NAME} PRIVATE Boost::asio Boost::system Boost::thread fmt::fmt)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::asio Boost::system Boost::thread Boost::beast fmt::fmt)
