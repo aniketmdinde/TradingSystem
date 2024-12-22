@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.15)
+project(TradingSystem)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Add vcpkg toolchain
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+endif()
+
+# Find Boost package and components
+set(Boost_INCLUDE_DIR "C:/vcpkg/installed/x64-windows/include")
+include(C:/vcpkg/scripts/buildsystems/vcpkg.cmake)
+find_package(Boost REQUIRED COMPONENTS asio system thread)
+
+# Directly add websocketpp include path from vcpkg
+include_directories(C:/vcpkg/installed/x64-windows/include)
+
+# Add executable
+add_executable(${PROJECT_NAME} src/main.cpp)
+
+# Link Boost libraries (websocketpp is header-only, so no need to link it)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::asio Boost::system Boost::thread)
