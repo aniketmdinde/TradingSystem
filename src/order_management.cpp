@@ -9,33 +9,59 @@ OrderManagement::OrderManagement()
     auto [client_id, client_secret] = load_config();
     this->client_id = client_id;
     this->client_secret = client_secret;
+
+    // Authenticate to fetch the API token
+    authenticate();
+}
+
+void OrderManagement::authenticate()
+{
+    // Fetch API token and set auth_token
+    auth_token = authenticate_with_deribit(client_id, client_secret);
+    if (auth_token.empty())
+    {
+        std::cerr << "Authentication failed! Check your credentials." << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
 void OrderManagement::place_order(const std::string &symbol, double price, int quantity)
 {
-    // Generate a unique order ID (for simplicity, we'll use a simple counter here)
-    std::string order_id = "order" + std::to_string(orders.size() + 1);
-
-    // Create a new order
-    Order new_order = {order_id, symbol, price, quantity, "Pending"};
-
-    // Add the new order to the list
-    orders.push_back(new_order);
-
-    std::cout << "Placed order: " << order_id << " for " << quantity << " " << symbol
-              << " at " << price << std::endl;
+    // Attempt to place the order via Deribit API and capture the order ID
+    std::string order_id = place_order_on_deribit(auth_token, symbol, price, quantity);
+    if (!order_id.empty())
+    {
+        // Add the new order to the list if API call succeeds
+        Order new_order = {order_id, symbol, price, quantity, "Pending"};
+        orders.push_back(new_order);
+        std::cout << "Placed order: " << order_id << " for " << quantity << " " << symbol
+                  << " at " << price << std::endl;
+    }
+    else
+    {
+        std::cerr << "Failed to place order for " << symbol << "!" << std::endl;
+    }
 }
 
 void OrderManagement::cancel_order(const std::string &order_id)
 {
-    // Find the order by ID
+    // Find the order locally by order_id
     auto it = std::find_if(orders.begin(), orders.end(), [&order_id](const Order &order)
                            { return order.order_id == order_id; });
 
     if (it != orders.end())
     {
-        it->status = "Canceled";
-        std::cout << "Canceled order: " << order_id << std::endl;
+        // Attempt to cancel the order via Deribit API
+        bool success = cancel_order_on_deribit(auth_token, it->order_id);
+        if (success)
+        {
+            it->status = "Canceled";
+            std::cout << "Canceled order: " << order_id << std::endl;
+        }
+        else
+        {
+            std::cerr << "Failed to cancel order: " << order_id << std::endl;
+        }
     }
     else
     {
@@ -45,7 +71,7 @@ void OrderManagement::cancel_order(const std::string &order_id)
 
 void OrderManagement::track_order(const std::string &order_id)
 {
-    // Find the order by ID
+    // Check order status (placeholder logic for now)
     auto it = std::find_if(orders.begin(), orders.end(), [&order_id](const Order &order)
                            { return order.order_id == order_id; });
 

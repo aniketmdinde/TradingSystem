@@ -24,6 +24,7 @@ include(C:/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 find_package(Boost REQUIRED COMPONENTS asio system thread beast)
 find_package(fmt REQUIRED)
+find_package(CURL REQUIRED)
 
 # Directly add websocketpp include path from vcpkg
 include_directories(C:/vcpkg/installed/x64-windows/include)
@@ -45,4 +46,4 @@ set(HEADERS
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 # Link Boost libraries (websocketpp is header-only, so no need to link it)
-target_link_libraries(${PROJECT_NAME} PRIVATE Boost::asio Boost::system Boost::thread Boost::beast fmt::fmt)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::asio Boost::system Boost::thread Boost::beast fmt::fmt CURL::libcurl)
