@@ -44,9 +44,17 @@ int main()
                   << ", Status: " << order.status << std::endl;
     }
 
-    // Step 5: Starting WebSocket server (simulate WebSocket functionality)
+    // Step 5: Get Order Book from Deribit
+    std::cout << "\nFetching Order Book for BTC-PERPETUAL..." << std::endl;
+    order_manager.get_order_book("BTC-PERPETUAL", 5); // Fetch order book for BTC-PERPETUAL with depth 5
+
+    // Step 6: View Current Positions (newly added)
+    std::cout << "\nFetching Current Positions..." << std::endl;
+    order_manager.view_positions("any", "future");
+
+    // Step 7: Starting WebSocket server (simulate WebSocket functionality)
     WebSocketServer server;
-    server.set_order_manager(&order_manager); // Set the order manager here before starting the server.
+    server.set_order_manager(&order_manager);
 
     std::cout << "\nStarting WebSocket server on port 9002..." << std::endl;
     std::thread server_thread(run_websocket_server, std::ref(server), 9002);

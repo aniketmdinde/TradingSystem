@@ -14,7 +14,6 @@ struct Order
     std::string status;
 };
 
-// Class to manage orders
 class OrderManagement
 {
 public:
@@ -27,7 +26,8 @@ public:
     void track_order(const std::string &order_id);
     std::vector<Order> get_all_orders();
     std::vector<Order> get_open_orders();
-    void view_positions();
+    void view_positions(const std::string &currency, const std::string &kind);
+    void get_order_book(const std::string &instrument_name, int depth);
 
 private:
     std::vector<Order> orders;

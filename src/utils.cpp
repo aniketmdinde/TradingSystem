@@ -223,3 +223,126 @@ bool modify_order_on_deribit(const std::string &auth_token, const std::string &o
         return false;
     }
 }
+
+// Get the order book for a given instrument from Deribit
+json get_order_book_from_deribit(const std::string &auth_token, const std::string &instrument_name, int depth)
+{
+    std::string url = "https://test.deribit.com/api/v2/public/get_order_book?depth=" + std::to_string(depth) + "&instrument_name=" + instrument_name;
+    std::string response;
+    CURL *curl = curl_easy_init();
+
+    if (curl)
+    {
+        struct curl_slist *headers = nullptr;
+        headers = curl_slist_append(headers, ("Authorization: Bearer " + auth_token).c_str());
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        CURLcode res = curl_easy_perform(curl);
+
+        if (res != CURLE_OK)
+        {
+            std::cerr << "cURL error: " << curl_easy_strerror(res) << std::endl;
+            curl_easy_cleanup(curl);
+            return {};
+        }
+        curl_easy_cleanup(curl);
+    }
+
+    // Parse the response and check for successful order book retrieval
+    auto json_response = json::parse(response, nullptr, false);
+    if (json_response.contains("result"))
+    {
+        return json_response["result"];
+    }
+    else
+    {
+        std::cerr << "Failed to get order book. Response: " << response << std::endl;
+        return {};
+    }
+}
+
+// Function to view positions from Deribit API
+std::vector<Position> view_positions_from_deribit(const std::string &auth_token, const std::string &currency, const std::string &kind)
+{
+    CURL *curl;
+    CURLcode res;
+    std::string read_buffer;
+    std::vector<Position> orders;
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    if (curl)
+    {
+        // Set the URL and headers
+        curl_easy_setopt(curl, CURLOPT_URL, ("https://test.deribit.com/api/v2/private/get_positions?currency=" + currency + "&kind=" + kind).c_str());
+        struct curl_slist *headers = NULL;
+        headers = curl_slist_append(headers, ("Authorization: Bearer " + auth_token).c_str());
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &read_buffer);
+
+        // Perform the request
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK)
+        {
+            std::cerr << "cURL error: " << curl_easy_strerror(res) << std::endl;
+        }
+        else
+        {
+            // Parse the JSON response using nlohmann::json
+            try
+            {
+                auto json_response = json::parse(read_buffer, nullptr, false); // Use nlohmann's json::parse
+
+                if (json_response.is_object() && json_response.contains("result"))
+                {
+                    for (const auto &item : json_response["result"])
+                    {
+                        Position pos;
+                        pos.instrument_name = item["instrument_name"].get<std::string>();
+                        pos.direction = item["direction"].get<std::string>();
+                        pos.average_price = item["average_price"].get<double>();
+                        pos.delta = item["delta"].get<double>();
+                        pos.estimated_liquidation_price = item["estimated_liquidation_price"].is_null() ? 0.0 : item["estimated_liquidation_price"].get<double>();
+                        pos.floating_profit_loss = item["floating_profit_loss"].get<double>();
+                        pos.index_price = item["index_price"].get<double>();
+                        pos.initial_margin = item["initial_margin"].get<double>();
+                        pos.leverage = item["leverage"].get<double>();
+                        pos.maintenance_margin = item["maintenance_margin"].get<double>();
+                        pos.mark_price = item["mark_price"].get<double>();
+                        pos.open_orders_margin = item["open_orders_margin"].get<double>();
+                        pos.realized_funding = item["realized_funding"].get<double>();
+                        pos.realized_profit_loss = item["realized_profit_loss"].get<double>();
+                        pos.settlement_price = item["settlement_price"].get<double>();
+                        pos.size = item["size"].get<double>();
+                        pos.size_currency = item["size_currency"].get<double>();
+                        pos.total_profit_loss = item["total_profit_loss"].get<double>();
+                        pos.kind = item["kind"].get<std::string>();
+
+                        orders.push_back(pos);
+                    }
+                }
+                else
+                {
+                    std::cerr << "Invalid JSON response" << std::endl;
+                }
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+            }
+        }
+
+        curl_easy_cleanup(curl);
+    }
+
+    curl_global_cleanup();
+    return orders;
+}

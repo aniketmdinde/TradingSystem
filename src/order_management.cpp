@@ -154,9 +154,75 @@ std::vector<Order> OrderManagement::get_open_orders()
     return open_orders;
 }
 
-void OrderManagement::view_positions()
+void OrderManagement::view_positions(const std::string &currency, const std::string &kind)
 {
-    // Placeholder for position tracking. Depending on your API, this should fetch the current positions.
-    std::cout << "Viewing current positions: (This is a placeholder)" << std::endl;
-    // Fetch positions via Deribit or another exchange API
+    std::cout << "Fetching current positions from Deribit..." << std::endl;
+
+    std::vector<Position> positions = view_positions_from_deribit(auth_token, currency, kind);
+
+    // Check if positions were fetched successfully
+    if (positions.empty())
+    {
+        std::cout << "No positions found or error fetching data." << std::endl;
+    }
+    else
+    {
+        std::cout << "Current Positions:" << std::endl;
+        // Print each position
+        for (const auto &pos : positions)
+        {
+            std::cout << "Instrument: " << pos.instrument_name
+                      << ", Direction: " << pos.direction
+                      << ", Average Price: " << pos.average_price
+                      << ", Delta: " << pos.delta
+                      << ", Estimated Liquidation Price: " << pos.estimated_liquidation_price
+                      << ", Floating Profit/Loss: " << pos.floating_profit_loss
+                      << ", Index Price: " << pos.index_price
+                      << ", Initial Margin: " << pos.initial_margin
+                      << ", Leverage: " << pos.leverage
+                      << ", Maintenance Margin: " << pos.maintenance_margin
+                      << ", Mark Price: " << pos.mark_price
+                      << ", Open Orders Margin: " << pos.open_orders_margin
+                      << ", Realized Funding: " << pos.realized_funding
+                      << ", Realized Profit/Loss: " << pos.realized_profit_loss
+                      << ", Settlement Price: " << pos.settlement_price
+                      << ", Size: " << pos.size
+                      << ", Size Currency: " << pos.size_currency
+                      << ", Total Profit/Loss: " << pos.total_profit_loss
+                      << ", Kind: " << pos.kind << std::endl;
+        }
+    }
+}
+
+// Function to get the order book for a specific instrument
+void OrderManagement::get_order_book(const std::string &instrument_name, int depth)
+{
+    if (auth_token.empty())
+    {
+        std::cerr << "Auth token is missing. Please authenticate first." << std::endl;
+        return;
+    }
+
+    // Call the get_order_book_from_deribit function
+    auto order_book = get_order_book_from_deribit(auth_token, instrument_name, depth);
+    if (order_book.is_null())
+    {
+        std::cerr << "Failed to retrieve order book for " << instrument_name << std::endl;
+        return;
+    }
+
+    std::cout << "Order book for " << instrument_name << " (depth " << depth << "):\n";
+
+    // Printing the order book contents
+    std::cout << "Asks:\n";
+    for (const auto &ask : order_book["asks"])
+    {
+        std::cout << "Price: " << ask[0] << ", Quantity: " << ask[1] << std::endl;
+    }
+
+    std::cout << "Bids:\n";
+    for (const auto &bid : order_book["bids"])
+    {
+        std::cout << "Price: " << bid[0] << ", Quantity: " << bid[1] << std::endl;
+    }
 }
