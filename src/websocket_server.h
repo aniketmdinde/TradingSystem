@@ -20,8 +20,8 @@ private:
     void on_message(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg);
 
     websocketpp::server<websocketpp::config::asio> m_server;
-    std::set<websocketpp::connection_hdl, std::owner_less<websocketpp::connection_hdl>> m_connections; // Use a set for unique connections
-    std::mutex m_connections_mutex;                                                                    // Mutex to protect the connection set
+    std::set<websocketpp::connection_hdl, std::owner_less<websocketpp::connection_hdl>> m_connections;
+    std::mutex m_connections_mutex;
     OrderManagement *order_manager;
 };
 

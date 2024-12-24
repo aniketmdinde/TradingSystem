@@ -6,7 +6,6 @@
 
 using json = nlohmann::json;
 
-// Load configuration (client_id and client_secret)
 std::pair<std::string, std::string> load_config()
 {
     const std::string config_path = "../../config/config.json";
@@ -35,14 +34,12 @@ std::pair<std::string, std::string> load_config()
     }
 }
 
-// Write callback for handling the response data
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
     ((std::string *)userp)->append((char *)contents, size * nmemb);
     return size * nmemb;
 }
 
-// Authenticate with Deribit and obtain an access token
 std::string authenticate_with_deribit(const std::string &client_id, const std::string &client_secret)
 {
     std::string url = "https://test.deribit.com/api/v2/public/auth?client_id=" + client_id + "&client_secret=" + client_secret + "&grant_type=client_credentials";
@@ -76,7 +73,6 @@ std::string authenticate_with_deribit(const std::string &client_id, const std::s
     return {};
 }
 
-// Place an order on Deribit (buy order by default)
 std::string place_order_on_deribit(const std::string &auth_token, const std::string &symbol, double price, int quantity, const std::string &order_type)
 {
     std::string url = "https://test.deribit.com/api/v2/private/buy?amount=" + std::to_string(quantity) +
@@ -123,7 +119,6 @@ std::string place_order_on_deribit(const std::string &auth_token, const std::str
     }
 }
 
-// Cancel an order on Deribit using order ID
 bool cancel_order_on_deribit(const std::string &auth_token, const std::string &order_id)
 {
     std::string url = "https://test.deribit.com/api/v2/private/cancel?order_id=" + order_id;
@@ -175,7 +170,6 @@ bool cancel_order_on_deribit(const std::string &auth_token, const std::string &o
     }
 }
 
-// Modify an order on Deribit by changing price and quantity
 bool modify_order_on_deribit(const std::string &auth_token, const std::string &order_id, double new_price, int new_quantity)
 {
     std::string url = "https://test.deribit.com/api/v2/private/edit";
@@ -188,14 +182,10 @@ bool modify_order_on_deribit(const std::string &auth_token, const std::string &o
         headers = curl_slist_append(headers, ("Authorization: Bearer " + auth_token).c_str());
         headers = curl_slist_append(headers, "Content-Type: application/json");
 
-        // Prepare the JSON body
-        std::string data = "{\"order_id\": \"" + order_id + "\", \"price\": " + std::to_string(new_price) +
-                           ", \"amount\": " + std::to_string(new_quantity) + "}";
+        std::string full_url = url + "?order_id=" + order_id + "&price=" + std::to_string(new_price) + "&amount=" + std::to_string(new_quantity);
 
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_POST, 1L); // Change to POST request
+        curl_easy_setopt(curl, CURLOPT_URL, full_url.c_str());
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str()); // Send the JSON body
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
@@ -210,21 +200,27 @@ bool modify_order_on_deribit(const std::string &auth_token, const std::string &o
         curl_easy_cleanup(curl);
     }
 
-    // Parse the response and check for successful order modification
     auto json_response = json::parse(response, nullptr, false);
-    if (json_response.contains("result") && json_response["result"].contains("order_id"))
+    if (json_response.contains("result") && json_response["result"].contains("order"))
     {
-        std::cout << "Order modified successfully. New Order ID: " << json_response["result"]["order_id"] << std::endl;
-        return true;
+        if (json_response["result"]["order"].contains("replaced") && json_response["result"]["order"]["replaced"] == true)
+        {
+            std::cout << "Order modified successfully. New Order ID: " << json_response["result"]["order"]["order_id"] << std::endl;
+            return true;
+        }
+        else
+        {
+            std::cerr << "Failed to modify order. Order not replaced. Response: " << response << std::endl;
+            return false;
+        }
     }
     else
     {
-        std::cerr << "Failed to modify order. Response: " << response << std::endl;
+        std::cerr << "Failed to modify order. Invalid response: " << response << std::endl;
         return false;
     }
 }
 
-// Get the order book for a given instrument from Deribit
 json get_order_book_from_deribit(const std::string &auth_token, const std::string &instrument_name, int depth)
 {
     std::string url = "https://test.deribit.com/api/v2/public/get_order_book?depth=" + std::to_string(depth) + "&instrument_name=" + instrument_name;
@@ -254,7 +250,6 @@ json get_order_book_from_deribit(const std::string &auth_token, const std::strin
         curl_easy_cleanup(curl);
     }
 
-    // Parse the response and check for successful order book retrieval
     auto json_response = json::parse(response, nullptr, false);
     if (json_response.contains("result"))
     {
@@ -267,7 +262,6 @@ json get_order_book_from_deribit(const std::string &auth_token, const std::strin
     }
 }
 
-// Function to view positions from Deribit API
 std::vector<Position> view_positions_from_deribit(const std::string &auth_token, const std::string &currency, const std::string &kind)
 {
     CURL *curl;
@@ -288,7 +282,6 @@ std::vector<Position> view_positions_from_deribit(const std::string &auth_token,
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &read_buffer);
 
-        // Perform the request
         res = curl_easy_perform(curl);
         if (res != CURLE_OK)
         {
@@ -296,10 +289,9 @@ std::vector<Position> view_positions_from_deribit(const std::string &auth_token,
         }
         else
         {
-            // Parse the JSON response using nlohmann::json
             try
             {
-                auto json_response = json::parse(read_buffer, nullptr, false); // Use nlohmann's json::parse
+                auto json_response = json::parse(read_buffer, nullptr, false);
 
                 if (json_response.is_object() && json_response.contains("result"))
                 {
